@@ -1484,8 +1484,34 @@ button {
   }
   .toast {
     bottom: 150px;
-    max-width: calc(100vw - 32px);
+    width: max-content;
+    max-width: calc(100vw - 48px);
+    text-align: center;
+    line-height: 1.5;
   }
+}
+
+.cutaway.narrow {
+  z-index: 17;
+}
+.cutaway.narrow svg {
+  display: none;
+}
+.cutaway.narrow .col {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  max-height: 46vh;
+  overflow: auto;
+  padding: 16px 16px 20px;
+  background: var(--ink-1);
+  border-top: 1px solid var(--hair-2);
+  z-index: 17;
+}
+.cutaway.narrow .title {
+  font-size: 24px;
 }
 
 @media (prefers-reduced-motion: reduce) {

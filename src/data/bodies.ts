@@ -259,7 +259,7 @@ export const BODIES: BodyDef[] = [
     radiusKm: 1188.3,
     rotation: { ra0: 132.993, dec0: -6.163, w0: 302.695, wd: 56.362_522_5 },
     texture: { base: 'pluto', sizes: ['2k', '4k'], lon0: 0 },
-    atmosphere: { color: [0.6, 0.75, 1.0], strength: 0.15, heightKm: 200 },
+    atmosphere: { color: [0.6, 0.75, 1.0], strength: 0.07, heightKm: 60 },
     ink: '#d9b99a',
     provenance: 'mixed',
     facts: { massKg: 1.303e22, densityKgM3: 1854, gravityMs2: 0.62, escapeKms: 1.21, rotationH: -153.29, dayH: 153.28, obliquityDeg: 122.53, periodD: 90_560, aAu: 39.48, ecc: 0.2488, inclDeg: 17.16, meanTempC: -225, pressureBar: 0.000_01, discovered: { year: 1930, by: 'C. Tombaugh' } },

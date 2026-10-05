@@ -52,7 +52,7 @@ export interface AppState {
   sound: boolean;
   cutaway: string | null;
   altLayer: boolean;
-  panel: null | 'legend' | 'colophon' | 'help';
+  panel: null | 'legend' | 'colophon' | 'help' | 'menu';
   indexOpen: boolean;
   intro: 'loading' | 'ready' | 'flying' | 'done';
   seeking: number | null;

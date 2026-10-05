@@ -251,6 +251,39 @@ export async function start() {
     card.el.classList.toggle('hidden', !!key || !store.get().selected);
   });
   cutLabels.onClose = () => store.set({ cutaway: null });
+  sheets.menuContent = () => {
+    const st = store.get();
+    const row = (label: string, pressed: boolean, on: () => void) => {
+      const b = h('button', { class: 'hair-btn', type: 'button', 'aria-pressed': String(pressed), style: 'width:100%;justify-content:space-between;min-height:44px' }, h('span', {}, label), h('span', {}, pressed ? '●' : '○'));
+      b.addEventListener('click', () => {
+        on();
+        store.set({ panel: null });
+      });
+      return b;
+    };
+    const lang = getLang();
+    return [
+      h(
+        'div',
+        { style: 'display:grid;gap:8px' },
+        row(t('toggle.orbits'), st.orbits, () => act.toggle('orbits')),
+        row(t('toggle.trails'), st.trails, () => act.toggle('trails')),
+        row(t('toggle.labels'), st.labels, () => act.toggle('labels')),
+        row(t('toggle.smallbodies'), st.smallBodies, () => act.toggle('smallBodies')),
+        row(t('toggle.sound'), st.sound, () => void act.toggleSound()),
+        row(t('toggle.lang'), false, () => act.setLang(lang === 'de' ? 'en' : 'de')),
+        row(`${t('scale.true')} / ${t('scale.illustrative')}`, st.scaleMode === 'true', () => act.toggleScale()),
+      ),
+      h(
+        'div',
+        { style: 'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px' },
+        h('button', { class: 'hair-btn', type: 'button', style: 'min-height:44px', onclick: () => store.set({ panel: 'legend' }) }, t('legend.title')),
+        h('button', { class: 'hair-btn', type: 'button', style: 'min-height:44px', onclick: () => store.set({ panel: 'colophon' }) }, t('colophon.sources')),
+        h('button', { class: 'hair-btn', type: 'button', style: 'min-height:44px', onclick: () => store.set({ panel: 'help' }) }, t('help.title')),
+        h('button', { class: 'hair-btn', type: 'button', style: 'min-height:44px', onclick: () => void act.share() }, t('misc.share')),
+      ),
+    ];
+  };
   store.watch((s) => s.altLayer, (on) => {
     const sel = store.get().selected;
     for (const k of Object.keys(BODY)) engine.bodies.setAltLayer(k, on && k === sel);
@@ -500,15 +533,35 @@ export async function start() {
       c.pitch = pitch ?? lit.pitch;
     },
     select: (key: string | null) => act.select(key, false),
+    seek: (iso: string) => act.seekTo(iso),
     finishIntro: () => finishIntro(true),
   };
   let last = performance.now();
   let uiClock = 0;
+  // adaptive quality: if the device cannot keep up, lower the resolution, then drop bloom
+  let perfWindow = 0;
+  let perfFrames = 0;
+  let slowWindows = 0;
+  const adapt = (dt: number) => {
+    if (engine.fixedDpr !== null || store.get().intro === 'loading') return;
+    perfWindow += dt;
+    perfFrames++;
+    if (perfWindow < 2) return;
+    const fps = perfFrames / perfWindow;
+    perfWindow = 0;
+    perfFrames = 0;
+    slowWindows = fps < 26 ? slowWindows + 1 : 0;
+    if (slowWindows >= 2 && engine.quality < 2) {
+      engine.setQuality(engine.quality + 1);
+      slowWindows = 0;
+    }
+  };
   const loop = (now: number) => {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     frameTimes.push(now);
     if (frameTimes.length > 30) frameTimes.shift();
+    if (!(window as unknown as { __atlasProbe?: boolean }).__atlasProbe) adapt(dt);
     const s = store.get();
     if (!s.paused && s.seeking === null && s.intro === 'done') sim.advance((s.direction * RATES[s.rateIdx] * dt) / 86_400);
     engine.render(dt, {
@@ -523,7 +576,7 @@ export async function start() {
     const f = engine.frame;
     const sun = f.pos.get('sun')!;
     const sunDistLog = Math.log10(Math.hypot(sun[0] - f.cam[0], sun[1] - f.cam[1], sun[2] - f.cam[2]));
-    labels.update({ show: s.labels && s.intro === 'done', selected: s.selected, focus: f.focusKey, illus: s.scaleMode === 'illustrative', annotations: s.intro === 'done' ? engine.space.annotations : [], camera: engine.camera, width: f.width, height: f.height, logD: f.logD });
+    labels.update({ cutaway: s.cutaway, show: s.labels && s.intro === 'done', selected: s.selected, focus: f.focusKey, illus: s.scaleMode === 'illustrative', annotations: s.intro === 'done' ? engine.space.annotations : [], camera: engine.camera, width: f.width, height: f.height, logD: f.logD });
     cutLabels.update(engine.camera, f.width, f.height, 0);
     alt.update(f.logD);
     sound.setZoom(f.logD);
@@ -536,6 +589,7 @@ export async function start() {
     // keep the subject clear of the side panels
     const desk = f.width > 760;
     if (s.cutaway && desk) engine.shiftTarget = { x: Math.min(170, f.width * 0.12), y: 0 };
+    else if (s.cutaway && !desk) engine.shiftTarget = { x: 0, y: Math.min(f.height * 0.24, 220) };
     else if (s.selected && desk) engine.shiftTarget = { x: 190, y: 0 };
     else if (s.selected && !desk) engine.shiftTarget = { x: 0, y: Math.min(f.height * 0.22, 200) };
     else engine.shiftTarget = { x: 0, y: 0 };
@@ -545,6 +599,14 @@ export async function start() {
     uiClock += dt;
     if (uiClock > 0.1) {
       uiClock = 0;
+      const panels = [top.el.querySelector('.wordmark'), top.el.querySelector('.tools'), top.el.querySelector('.scale-badge .frame'), alt.el, time.el, toggles.el, readout.el, index.el, card.el, bodiesBtn];
+      labels.blocked = panels
+        .filter((e): e is HTMLElement => !!e && getComputedStyle(e).opacity !== '0' && !e.classList.contains('hidden') && !e.classList.contains('far'))
+        .map((e) => {
+          const r = e.getBoundingClientRect();
+          return { x: r.left - 6, y: r.top - 4, w: r.width + 12, h: r.height + 8 };
+        })
+        .filter((r) => r.w > 12 && r.h > 12);
       const plate = currentPlate(f, sunDistLog);
       top.update(plate, badge(plate, s.scaleMode === 'illustrative', engine.bodies, f.focusKey));
       time.update(sim.jd, sim.throttled);

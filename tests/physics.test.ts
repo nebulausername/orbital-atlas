@@ -120,3 +120,25 @@ describe('Rotation (IAU WGCCRE)', () => {
     expect(Math.abs(lat)).toBeLessThan(0.5);
   });
 });
+
+describe('the colophon tells the truth', () => {
+  // The accuracy paragraph in both languages quotes these numbers. If the integrator
+  // or its step size changes, this test fails before the text can go stale.
+  it('quotes accuracy figures that the simulation actually meets', async () => {
+    const { en } = await import('../src/i18n/en');
+    const { de } = await import('../src/i18n/de');
+    for (const text of [en['colophon.accuracy.body'], de['colophon.accuracy.body']]) {
+      for (const n of ['1 km', '3 km', '4 km', '10 km', '200 km']) expect(text).toContain(n);
+    }
+    const sim = new Simulation();
+    const ref = dates['2036-01-01'];
+    await sim.seek(ref.sun.jd);
+    const err = errorsKm(sim, ref);
+    expect(err.earth).toBeLessThan(1.5);
+    expect(err.venus).toBeLessThan(1.5);
+    expect(err.mars).toBeLessThan(3.5);
+    expect(err.mercury).toBeLessThan(4.5);
+    for (const k of ['jupiter', 'saturn', 'uranus', 'neptune']) expect(err[k], k).toBeLessThan(10);
+    expect(err.moon).toBeLessThan(250);
+  }, 120_000);
+});

@@ -42,7 +42,7 @@ export class TopBar {
     this.badgeDetail = h('div', { class: 'detail' });
     this.badgeSwitch = h('div', { class: 'switch caps' });
     this.badgeBtn = h('button', { class: 'scale-badge', type: 'button', onclick: () => act.toggleScale() }, h('span', { class: 'frame' }, h('i', { class: 'dot' }), this.badgeLabel), this.badgeDetail, this.badgeSwitch);
-    this.soundBtn = h('button', { class: 'hair-btn icon', type: 'button', onclick: () => act.toggleSound() });
+    this.soundBtn = h('button', { class: 'hair-btn icon desk', type: 'button', onclick: () => act.toggleSound() });
     const lang = getLang();
     this.el = h(
       'header',
@@ -55,10 +55,10 @@ export class TopBar {
         h('button', { class: 'hair-btn desk', type: 'button', onclick: () => act.setLang(lang === 'de' ? 'en' : 'de'), title: t('toggle.lang'), lang: lang === 'de' ? 'en' : 'de' }, t('toggle.lang.short')),
         this.soundBtn,
         h('button', { class: 'hair-btn icon desk', type: 'button', title: t('misc.share'), 'aria-label': t('misc.share'), onclick: () => act.share(), html: ICON.share }),
-        h('button', { class: 'hair-btn icon', type: 'button', title: t('legend.title'), 'aria-label': t('legend.title'), onclick: () => act.openPanel('legend'), html: ICON.legend }),
-        h('button', { class: 'hair-btn icon', type: 'button', title: t('colophon.title'), 'aria-label': t('colophon.title'), onclick: () => act.openPanel('colophon'), html: ICON.sources }),
+        h('button', { class: 'hair-btn icon desk', type: 'button', title: t('legend.title'), 'aria-label': t('legend.title'), onclick: () => act.openPanel('legend'), html: ICON.legend }),
+        h('button', { class: 'hair-btn icon desk', type: 'button', title: t('colophon.title'), 'aria-label': t('colophon.title'), onclick: () => act.openPanel('colophon'), html: ICON.sources }),
         h('button', { class: 'hair-btn icon desk', type: 'button', title: t('help.title'), 'aria-label': t('help.title'), onclick: () => act.openPanel('help'), html: ICON.help }),
-        h('button', { class: 'hair-btn mobile-only', type: 'button', onclick: () => act.setLang(lang === 'de' ? 'en' : 'de'), lang: lang === 'de' ? 'en' : 'de' }, t('toggle.lang.short')),
+        h('button', { class: 'hair-btn icon mobile-only', type: 'button', 'aria-label': t('misc.menu'), title: t('misc.menu'), onclick: () => act.openPanel('menu'), html: ICON.list }),
       ),
     );
     this.renderSound();

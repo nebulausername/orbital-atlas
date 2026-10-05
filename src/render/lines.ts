@@ -197,7 +197,10 @@ export class LinesLayer {
     const sun = f.pos.get('sun')!;
     const st = this.bodies.states;
     const camDistSun = Math.hypot(sun[0] - f.cam[0], sun[1] - f.cam[1], sun[2] - f.cam[2]);
-    const sysFade = 1 - smoothstep(3.6, 4.8, Math.log10(camDistSun));
+    // heliocentric orbits fade when the camera is close to a planet: up there they are
+    // just straight lines cutting through the picture
+    const closeUp = f.focusKey && f.focusKey !== 'sun' ? smoothstep(-2.7, -1.4, f.logD) : 1;
+    const sysFade = (1 - smoothstep(3.6, 4.8, Math.log10(camDistSun))) * closeUp;
 
     // ---- osculating orbits ----
     for (const o of this.orbits) {
@@ -298,7 +301,7 @@ export class LinesLayer {
       } else if (t.def.kind !== 'spacecraft') {
         alpha *= sysFade;
       } else {
-        alpha *= 1 - smoothstep(5.2, 6.2, Math.log10(camDistSun));
+        alpha *= (1 - smoothstep(5.2, 6.2, Math.log10(camDistSun))) * closeUp;
       }
       if (s && t.def.key === f.focusKey) alpha *= smoothstep(30, 400, s.dist / s.rTrue);
       if (alpha < 0.004 || t.count < 2) {
@@ -327,7 +330,7 @@ export class LinesLayer {
     }
 
     // ---- spacecraft history (launch → epoch), heliocentric ----
-    const craftAlpha = f.showOrbits * 0.55 * (1 - smoothstep(5.0, 6.0, Math.log10(camDistSun)));
+    const craftAlpha = f.showOrbits * 0.55 * (1 - smoothstep(5.0, 6.0, Math.log10(camDistSun))) * closeUp;
     for (const c of this.craft) {
       if (craftAlpha < 0.004) {
         c.line.hide();

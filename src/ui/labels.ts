@@ -8,7 +8,7 @@ import type { Annotation } from '../render/space';
 import { h } from './dom';
 import { fmt, t, tk, type Key } from '../i18n/i18n';
 
-interface Rect {
+export interface Rect {
   x: number;
   y: number;
   w: number;
@@ -59,8 +59,12 @@ export class Labels {
     return b;
   }
 
-  update(opts: { show: boolean; selected: string | null; focus: string | null; illus: boolean; annotations: Annotation[]; camera: PerspectiveCamera; width: number; height: number; logD: number }) {
+  /** screen areas covered by panels; labels stay out of them */
+  blocked: Rect[] = [];
+
+  update(opts: { cutaway?: string | null; show: boolean; selected: string | null; focus: string | null; illus: boolean; annotations: Annotation[]; camera: PerspectiveCamera; width: number; height: number; logD: number }) {
     const placed: Rect[] = [];
+    const blocked = this.blocked;
     const states = [...this.bodies.states.values()]
       .filter((s) => s.onScreen && !s.merged)
       .sort((a, b) => this.priority(b, opts) - this.priority(a, opts));
@@ -70,6 +74,8 @@ export class Labels {
       if (!opts.show && st.key !== opts.selected) continue;
       // beyond the heliosphere single bodies are meaningless; the plate annotations take over
       if (opts.logD > 4.4 && st.key !== opts.selected) continue;
+      // an open section is a plate of its own
+      if (opts.cutaway && st.key !== opts.cutaway) continue;
       // spacecraft and small moons only once they are distinguishable
       const b = this.bodyEl(st);
       const r = Math.max(st.px, 5);
@@ -77,7 +83,7 @@ export class Labels {
       const x = st.sx + r + 4;
       const rect = { x: st.sx - 6, y: st.sy - 9, w: b.w + r + 10, h: 18 };
       const essential = st.key === opts.selected || st.key === opts.focus;
-      if (!essential && placed.some((p) => overlaps(p, rect))) continue;
+      if (!essential && (placed.some((p) => overlaps(p, rect)) || blocked.some((p) => overlaps(p, rect)))) continue;
       placed.push(rect);
       shown.add(st.key);
       const tiny = st.px < 4;
@@ -125,7 +131,7 @@ export class Labels {
       const centred = a.kind === 'region' || a.kind === 'arm';
       const x = centred ? sx - e.w / 2 : sx;
       const rect = { x, y: sy - 9, w: e.w, h: 18 };
-      if (placed.some((p) => overlaps(p, rect))) continue;
+      if (placed.some((p) => overlaps(p, rect)) || blocked.some((p) => overlaps(p, rect))) continue;
       placed.push(rect);
       used.add(a.id);
       e.el.style.transform = `translate3d(${x.toFixed(1)}px, ${(sy - 9).toFixed(1)}px, 0)`;

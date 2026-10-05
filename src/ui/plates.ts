@@ -60,7 +60,8 @@ export function badge(plate: PlateId, illusMode: boolean, bodies: BodiesLayer, f
   let max = 1;
   for (const st of bodies.states.values()) {
     if (!st.onScreen || st.merged || st.def.kind === 'spacecraft') continue;
-    if (st.px < 0.6) continue;
+    // only what is actually drawn as a disc counts; markers are legend symbols
+    if (st.px < 1.5) continue;
     max = Math.max(max, st.enlarge);
   }
   const fs = focus ? bodies.states.get(focus) : undefined;

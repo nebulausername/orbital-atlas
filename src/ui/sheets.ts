@@ -11,6 +11,9 @@ export class Sheets {
   private open: string | null = null;
   private lastFocus: Element | null = null;
 
+  /** extra content for the mobile menu (toggles etc.), provided by the app */
+  menuContent: () => Node[] = () => [];
+
   constructor(private onClose: () => void, private smallCount: () => number) {
     this.backdrop.addEventListener('click', () => onClose());
     this.sheet.addEventListener('keydown', (e) => {
@@ -28,7 +31,7 @@ export class Sheets {
     });
   }
 
-  show(which: 'legend' | 'colophon' | 'help' | null) {
+  show(which: 'legend' | 'colophon' | 'help' | 'menu' | null) {
     if (which === this.open) return;
     this.open = which;
     if (!which) {
@@ -39,9 +42,9 @@ export class Sheets {
     }
     this.lastFocus = document.activeElement;
     const close = h('button', { class: 'hair-btn icon x', type: 'button', 'aria-label': t('card.close'), onclick: () => this.onClose(), html: ICON.close });
-    const body = which === 'legend' ? this.legend() : which === 'colophon' ? this.colophon() : this.help();
+    const body = which === 'legend' ? this.legend() : which === 'colophon' ? this.colophon() : which === 'menu' ? [h('div', { class: 'caps', style: 'color:var(--vermilion)' }, t('app.title')), h('h2', {}, t('misc.menu')), ...this.menuContent()] : this.help();
     this.sheet.replaceChildren(close, ...body);
-    this.sheet.setAttribute('aria-label', which === 'legend' ? t('legend.title') : which === 'colophon' ? t('colophon.title') : t('help.title'));
+    this.sheet.setAttribute('aria-label', which === 'legend' ? t('legend.title') : which === 'colophon' ? t('colophon.title') : which === 'menu' ? t('misc.menu') : t('help.title'));
     this.sheet.classList.add('open');
     this.backdrop.classList.add('open');
     this.sheet.scrollTop = 0;
@@ -49,7 +52,7 @@ export class Sheets {
   }
 
   rerender() {
-    const w = this.open as 'legend' | 'colophon' | 'help' | null;
+    const w = this.open as 'legend' | 'colophon' | 'help' | 'menu' | null;
     this.open = null;
     if (w) this.show(w);
   }

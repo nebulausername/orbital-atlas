@@ -38,7 +38,7 @@ import type { Orientation } from '../physics/rotation';
 import { toRender, type Frame } from './frame';
 import { loadTexture } from './textures';
 import { PLANET_FRAG, PLANET_VERT } from './shaders/planet';
-import { ATMO_FRAG, ATMO_VERT, CUT_FRAG, CUT_VERT, GLOW_FRAG, GLOW_VERT, RING_FRAG, RING_VERT, SUN_FRAG, SUN_VERT } from './shaders/bodies';
+import { ATMO_FRAG, ATMO_VERT, CUT_FRAG, CUT_VERT, GLOW_FRAG, GLOW_VERT, RING_FRAG, RING_VERT, SUN_FRAG, SUN_VERT, TAIL_FRAG, TAIL_VERT } from './shaders/bodies';
 
 export interface BodyState {
   key: string;
@@ -60,7 +60,7 @@ export interface BodyState {
   merged: boolean;
 }
 
-const MIN_PX: Record<BodyDef['kind'], number> = { star: 7, planet: 3.4, dwarf: 2.4, moon: 2.2, comet: 1.6, spacecraft: 0 };
+const MIN_PX: Record<BodyDef['kind'], number> = { star: 7, planet: 3.4, dwarf: 2.4, moon: 2.2, comet: 1.4, spacecraft: 0 };
 const MAX_ENLARGE: Record<BodyDef['kind'], number> = { star: 45, planet: 6000, dwarf: 30000, moon: 30000, comet: 2e6, spacecraft: 1 };
 const sphereHi = new SphereGeometry(1, 160, 96);
 const sphereLo = new SphereGeometry(1, 64, 40);
@@ -117,6 +117,7 @@ class BodyView {
   glow?: Mesh;
   glowMat?: ShaderMaterial;
   cutFaces: Mesh[] = [];
+  tails: { mesh: Mesh; mat: ShaderMaterial }[] = [];
   cutMat?: ShaderMaterial;
   interior?: Interior;
   hiResRequested = false;
@@ -289,6 +290,26 @@ class BodyView {
         this.cutFaces.push(m);
       }
     }
+    if (def.kind === 'comet') {
+      const g = new PlaneGeometry(1, 2, 48, 6);
+      g.translate(0.5, 0, 0);
+      for (const curve of [0, 1]) {
+        const mat = new ShaderMaterial({
+          vertexShader: TAIL_VERT,
+          fragmentShader: TAIL_FRAG,
+          uniforms: { uHead: { value: new Vector3() }, uAxis: { value: new Vector3() }, uLag: { value: new Vector3() }, uLength: { value: 0 }, uCurve: { value: curve }, uIntensity: { value: 0 } },
+          blending: AdditiveBlending,
+          depthWrite: false,
+          transparent: true,
+          side: DoubleSide,
+        });
+        const mesh = new Mesh(g, mat);
+        mesh.frustumCulled = false;
+        mesh.renderOrder = 4;
+        this.tails.push({ mesh, mat });
+        this.group.add(mesh);
+      }
+    }
     this.group.add(this.mesh);
     if (this.atmo) this.group.add(this.atmo);
     if (this.rings) this.group.add(this.rings);
@@ -433,8 +454,32 @@ export class BodiesLayer {
       v.altMix += (v.altTarget - v.altMix) * (1 - Math.exp(-f.dt * 4));
       v.highlight += ((f.selectedKey === key ? 1 : 0) - v.highlight) * (1 - Math.exp(-f.dt * 5));
 
+      if (v.tails.length) {
+        // tail length ∝ 1/r² (sunlight drives the activity), only inside ~4 AU
+        const sunP = f.pos.get('sun')!;
+        const ax = new Vector3(st.pos[0] - sunP[0], st.pos[1] - sunP[1], st.pos[2] - sunP[2]);
+        const rAu = ax.length();
+        ax.normalize();
+        const vel = f.sim.vel.get(key);
+        const velS = vel ? new Vector3(vel[0], vel[2], -vel[1]).normalize().negate() : new Vector3();
+        const len = Math.min(0.6, 0.11 / (rAu * rAu)) * f.s;
+        const on = (1 - smoothstep(2.5, 4.2, rAu)) * f.showOrbits;
+        const head = toRender(f, st.pos, new Vector3());
+        for (const t of v.tails) {
+          t.mat.uniforms.uHead.value.copy(head);
+          t.mat.uniforms.uAxis.value.copy(ax);
+          t.mat.uniforms.uLag.value.copy(velS);
+          t.mat.uniforms.uLength.value = len;
+          t.mat.uniforms.uIntensity.value = 0.9 * on;
+          t.mesh.visible = on > 0.01;
+        }
+      }
       const visible = st.px > 0.35 && !st.merged && st.dist > st.rDisp * 1.0001;
-      v.group.visible = visible;
+      v.mesh.visible = visible;
+      if (v.atmo) v.atmo.visible = visible;
+      if (v.rings) v.rings.visible = visible;
+      if (v.glow) v.glow.visible = visible;
+      v.group.visible = visible || v.tails.some((t) => t.mesh.visible);
       if (!visible) continue;
       v.ensureTextures(big && (f.focusKey === key || f.selectedKey === key) && st.px > 120);
 

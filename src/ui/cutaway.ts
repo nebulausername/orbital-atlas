@@ -98,6 +98,12 @@ export class CutawayLabels {
     // column placement: beside the planet, whichever side has room
     const colW = width < 760 ? 200 : 250;
     const narrow = width < 760;
+    this.root.classList.toggle('narrow', narrow);
+    if (narrow) {
+      this.col.style.left = '';
+      this.col.style.top = '';
+      return;
+    }
     const right = st.sx + st.px + 56;
     const left = st.sx - st.px - 56 - colW;
     const minX = narrow ? 12 : 190;

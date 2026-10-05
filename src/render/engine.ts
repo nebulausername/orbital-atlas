@@ -112,8 +112,20 @@ export class Engine {
     };
   }
 
+  /** 0 = full quality, 1 = lower resolution, 2 = also no bloom */
+  quality = 0;
+  /** set by the trailer recorder: a fixed pixel ratio, no adaptive changes */
+  fixedDpr: number | null = null;
+
+  setQuality(q: number) {
+    this.quality = q;
+    this.bloom.enabled = q < 2;
+    this.resize(this.width, this.height);
+  }
+
   resize(w: number, h: number) {
-    const dpr = Math.min(window.devicePixelRatio || 1, this.mobile ? 1.6 : 2);
+    const native = Math.min(window.devicePixelRatio || 1, this.mobile ? 1.6 : 2);
+    const dpr = this.fixedDpr ?? (this.quality === 0 ? native : Math.max(1, native * 0.7));
     this.width = w;
     this.height = h;
     this.renderer.setPixelRatio(dpr);

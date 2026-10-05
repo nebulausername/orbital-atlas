@@ -266,3 +266,44 @@ void main() {
   gl_FragColor = vec4(col * d * uExposure, 1.0);
 }
 `;
+
+/**
+ * Comet tail: a camera-facing ribbon pointing away from the Sun. Length grows with
+ * 1/r² of the heliocentric distance (activity is driven by sunlight); the ion tail is
+ * straight and blue, the dust tail curves back along the orbit and is cream.
+ */
+export const TAIL_VERT = /* glsl */ `
+${LOG_V}
+uniform vec3 uHead;     // render space
+uniform vec3 uAxis;     // anti-sunward unit vector
+uniform vec3 uLag;      // unit vector opposite to the motion (dust tail bends this way)
+uniform float uLength;  // render units
+uniform float uCurve;   // 0 = ion tail, 1 = dust tail
+varying vec2 vT;
+void main() {
+  float x = position.x;          // 0..1 along the tail
+  float y = position.y;          // −1..1 across
+  vec3 dir = normalize(uAxis + uLag * uCurve * x * 0.6);
+  vec3 p = uHead + dir * x * uLength;
+  vec3 view = normalize(p);
+  vec3 side = normalize(cross(dir, view));
+  float w = uLength * (0.02 + 0.09 * x) * (1.0 + uCurve * 1.4);
+  p += side * y * w;
+  vT = vec2(x, y);
+  gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  #include <logdepthbuf_vertex>
+}
+`;
+export const TAIL_FRAG = /* glsl */ `
+${LOG_F}
+uniform float uCurve;
+uniform float uIntensity;
+varying vec2 vT;
+void main() {
+  #include <logdepthbuf_fragment>
+  float fall = pow(1.0 - vT.x, 1.6) * smoothstep(0.0, 0.03, vT.x + 0.01);
+  float across = exp(-vT.y * vT.y * (uCurve > 0.5 ? 2.5 : 6.0));
+  vec3 col = uCurve > 0.5 ? vec3(1.0, 0.9, 0.72) : vec3(0.55, 0.75, 1.0);
+  gl_FragColor = vec4(col * fall * across * uIntensity, 1.0);
+}
+`;

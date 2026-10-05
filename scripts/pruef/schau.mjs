@@ -15,6 +15,9 @@ const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--ena
 const small = args.includes('--small');
 const ctx = await browser.newContext(mobile ? { ...devices['iPhone 13'] } : { viewport: small ? { width: 1100, height: 690 } : { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
+await page.addInitScript(() => {
+  window.__atlasProbe = true;
+});
 const errors = [];
 page.on('console', (m) => {
   if (m.type() === 'error' || m.type() === 'warning') errors.push(`[${m.type()}] ${m.text()}`);
@@ -68,6 +71,10 @@ for (const tour of tours.length ? tours : ['skip']) {
     }, [key, logD, yaw, pitch]);
     await page.waitForTimeout(4000);
     await shot(`25-view-${key}-${logD}`);
+  } else if (tour.startsWith('date:')) {
+    await page.evaluate((d) => window.__atlas.seek(d), tour.slice(5));
+    await page.waitForFunction(() => window.__atlas.store.get().seeking === null, null, { timeout: 120000 });
+    await page.waitForTimeout(1000);
   } else if (tour.startsWith('cut:')) {
     await page.keyboard.press('i');
     await page.waitForTimeout(9000);
