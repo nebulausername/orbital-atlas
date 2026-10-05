@@ -1,0 +1,35 @@
+{
+ "source": "NASA/JPL Small-Body Database Query API",
+ "fetched": "2026-10-05T22:05:42.035Z",
+ "total": 24746,
+ "classes": [
+  "MBA",
+  "IMB",
+  "OMB",
+  "MCA",
+  "APO",
+  "ATE",
+  "AMO",
+  "IEO",
+  "TJN",
+  "CEN",
+  "TNO",
+  "PAA",
+  "HYA",
+  "AST"
+ ],
+ "counts": {
+  "TNO": 5966,
+  "MBA": 9046,
+  "CEN": 1055,
+  "OMB": 1071,
+  "TJN": 4511,
+  "MCA": 71,
+  "AMO": 1397,
+  "IMB": 23,
+  "AST": 4,
+  "APO": 1484,
+  "ATE": 98,
+  "IEO": 20
+ }
+}

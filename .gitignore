@@ -1,0 +1,12 @@
+node_modules/
+dist/
+quellen/roh/
+quellen/vorschau/
+*.log
+.vite/
+test-results/
+pruef-ausgabe/
+trailer/out/
+trailer/node_modules/
+trailer/public/aufnahmen/
+.tmp-vitest/
