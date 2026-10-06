@@ -1,0 +1,20 @@
+{
+  "name": "orbital-atlas-trailer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render:en": "remotion render src/index.ts Trailer-EN out/orbital-atlas-trailer-en.mp4",
+    "render:de": "remotion render src/index.ts Trailer-DE out/orbital-atlas-trailer-de.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.532",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.532"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "5.9"
+  }
+}

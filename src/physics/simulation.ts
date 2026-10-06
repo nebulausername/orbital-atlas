@@ -7,6 +7,7 @@
 import { BODIES, BODY, CHARON_PLUTO_MASS_RATIO, INTEGRATED, type BodyDef } from '../data/bodies';
 import epochData from '../data/generated/horizons-epoch.json';
 import moonData from '../data/generated/horizons-moons.json';
+import trajectories from '../data/generated/horizons-trajectories.json';
 import { AU_KM, gmToAuDay, mod, TAU } from '../core/units';
 import { NBody } from './nbody';
 import { elementsFromHorizons, positionAt, type Elements } from './kepler';
@@ -106,6 +107,28 @@ export class Simulation {
       this.pos.set(m.key, [p[0] + rel[0], p[1] + rel[1], p[2] + rel[2]]);
       this.vel.set(m.key, this.vel.get(m.parent)!);
     }
+    // Spacecraft before the epoch: their real paths were shaped by flybys and burns, so
+    // integrating backwards would be fiction. Use the recorded Horizons trajectory instead,
+    // and before launch they do not exist.
+    if (this.jd < EPOCH_JD) {
+      const sun = this.pos.get('sun')!;
+      for (const [key, rows] of Object.entries(trajectories.craft as Record<string, number[][]>)) {
+        if (this.jd < rows[0][0]) {
+          this.pos.delete(key);
+          this.vel.delete(key);
+          continue;
+        }
+        let k = Math.min(rows.length - 2, Math.max(0, Math.floor((this.jd - rows[0][0]) / (rows[1][0] - rows[0][0]))));
+        while (k > 0 && rows[k][0] > this.jd) k--;
+        while (k < rows.length - 2 && rows[k + 1][0] < this.jd) k++;
+        const a = rows[k], b = rows[k + 1];
+        const u = Math.min(1, Math.max(0, (this.jd - a[0]) / (b[0] - a[0])));
+        this.pos.set(key, [sun[0] + a[1] + (b[1] - a[1]) * u, sun[1] + a[2] + (b[2] - a[2]) * u, sun[2] + a[3] + (b[3] - a[3]) * u]);
+        const dt = b[0] - a[0];
+        const sv = this.vel.get('sun')!;
+        this.vel.set(key, [sv[0] + (b[1] - a[1]) / dt, sv[1] + (b[2] - a[2]) / dt, sv[2] + (b[3] - a[3]) / dt]);
+      }
+    }
     // Pluto–Charon: Horizons gives the barycentre; split it with the mass ratio.
     const charon = this.moons.find((m) => m.key === 'charon');
     if (charon) {
@@ -146,17 +169,19 @@ export class Simulation {
     return null;
   }
 
-  /** Heliocentric distance in AU. */
+  /** Heliocentric distance in AU (NaN if the body does not exist at this date). */
   sunDistance(key: string) {
     const s = this.pos.get('sun')!;
-    const p = this.pos.get(key)!;
+    const p = this.pos.get(key);
+    if (!p) return NaN;
     return Math.hypot(p[0] - s[0], p[1] - s[1], p[2] - s[2]);
   }
 
   /** Heliocentric speed in km/s. */
   sunSpeedKms(key: string) {
     const s = this.vel.get('sun')!;
-    const v = this.vel.get(key)!;
+    const v = this.vel.get(key);
+    if (!v) return NaN;
     return (Math.hypot(v[0] - s[0], v[1] - s[1], v[2] - s[2]) * AU_KM) / 86_400;
   }
 

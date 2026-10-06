@@ -97,7 +97,7 @@ const scratch = new Float32Array(Math.max(1025, 2000) * 3);
 export class LinesLayer {
   private orbits: OrbitEntry[] = [];
   private trails: Trail[] = [];
-  private craft: { key: string; line: FatLine; pts: V3[] }[] = [];
+  private craft: { key: string; line: FatLine; pts: V3[]; jds: number[] }[] = [];
   private materials: LineMaterial[] = [];
 
   constructor(scene: Scene, private bodies: BodiesLayer) {
@@ -133,7 +133,7 @@ export class LinesLayer {
       const pts = tr[key].map(([, x, y, z]) => eclToScene([x, y, z]));
       const line = new FatLine(pts.length, craftMat);
       scene.add(line.line);
-      this.craft.push({ key, line, pts });
+      this.craft.push({ key, line, pts, jds: tr[key].map((r) => r[0]) });
     }
     // the selected body's orbit is drawn with a heavier pen
     this.selMat = selMat;
@@ -336,7 +336,13 @@ export class LinesLayer {
         c.line.hide();
         continue;
       }
-      const n = c.pts.length;
+      // only the stretch already flown at the displayed date
+      let n = c.pts.length;
+      while (n > 0 && c.jds[n - 1] > jd) n--;
+      if (n < 2) {
+        c.line.hide();
+        continue;
+      }
       for (let i = 0; i < n; i++) {
         const p = c.pts[i];
         scratch[i * 3] = (sun[0] + p[0] - f.cam[0]) * f.s;

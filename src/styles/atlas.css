@@ -1523,3 +1523,31 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* trailer recorder modes (?record=1) */
+body[data-rec='clean'] .labels,
+body[data-rec='clean'] .cutaway,
+body[data-rec] .topbar,
+body[data-rec] .altimeter,
+body[data-rec] .time-console,
+body[data-rec] .readout,
+body[data-rec] .layer-toggles,
+body[data-rec] .index,
+body[data-rec] .card,
+body[data-rec] .bodies-btn,
+body[data-rec] .toast,
+body[data-rec] .plate-frame,
+body[data-rec] .intro,
+body[data-rec] .flight-title,
+body[data-rec='labels'] .cutaway,
+body[data-rec='cut'] .labels {
+  display: none !important;
+}
+body[data-rec='full'] .topbar,
+body[data-rec='full'] .altimeter,
+body[data-rec='full'] .time-console,
+body[data-rec='full'] .plate-frame,
+body[data-rec='full'] .layer-toggles,
+body[data-rec='full'] .readout {
+  display: revert !important;
+}

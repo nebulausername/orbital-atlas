@@ -40,6 +40,8 @@ export async function start() {
   const params = new URLSearchParams(location.search);
   const mobile = matchMedia('(max-width: 760px)').matches || matchMedia('(pointer: coarse)').matches;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // ?record=1: frames are rendered on demand with a fixed time step (trailer recorder)
+  const recording = params.get('record') === '1';
   document.documentElement.lang = getLang();
   document.title = `${t('app.title')} — ${t('app.tagline')}`;
 
@@ -526,6 +528,7 @@ export async function start() {
     jump(key: string, logD?: number, yaw?: number, pitch?: number) {
       const c = engine.atlasCam;
       c.flight = null;
+      c.idle = 0;
       c.focusKey = key;
       c.logD = c.targetLogD = logD ?? viewLogD(key);
       const lit = litAngles(key);
@@ -534,10 +537,15 @@ export async function start() {
     },
     select: (key: string | null) => act.select(key, false),
     seek: (iso: string) => act.seekTo(iso),
+    /** move the simulation clock directly (recorder) */
+    advanceDays: (d: number) => sim.advance(d),
+    seekJd: (jd: number) => seek(jd),
+    camState: () => ({ key: engine.atlasCam.focusKey, logD: engine.atlasCam.logD, yaw: engine.atlasCam.yaw, pitch: engine.atlasCam.pitch }),
     finishIntro: () => finishIntro(true),
   };
   let last = performance.now();
   let uiClock = 0;
+  let recShift = { x: 0, y: 0 };
   // adaptive quality: if the device cannot keep up, lower the resolution, then drop bloom
   let perfWindow = 0;
   let perfFrames = 0;
@@ -559,6 +567,10 @@ export async function start() {
   const loop = (now: number) => {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
+    tick(now, dt);
+    requestAnimationFrame(loop);
+  };
+  const tick = (now: number, dt: number) => {
     frameTimes.push(now);
     if (frameTimes.length > 30) frameTimes.shift();
     if (!(window as unknown as { __atlasProbe?: boolean }).__atlasProbe) adapt(dt);
@@ -588,7 +600,8 @@ export async function start() {
 
     // keep the subject clear of the side panels
     const desk = f.width > 760;
-    if (s.cutaway && desk) engine.shiftTarget = { x: Math.min(170, f.width * 0.12), y: 0 };
+    if (recording) engine.shiftTarget = recShift;
+    else if (s.cutaway && desk) engine.shiftTarget = { x: Math.min(170, f.width * 0.12), y: 0 };
     else if (s.cutaway && !desk) engine.shiftTarget = { x: 0, y: Math.min(f.height * 0.24, 220) };
     else if (s.selected && desk) engine.shiftTarget = { x: 190, y: 0 };
     else if (s.selected && !desk) engine.shiftTarget = { x: 0, y: Math.min(f.height * 0.22, 200) };
@@ -615,9 +628,33 @@ export async function start() {
       index.update((key) => (BODY[key].kind === 'spacecraft' || BODY[key].kind === 'comet' || BODY[key].kind === 'planet' || BODY[key].kind === 'dwarf' ? sim.sunDistance(key) : undefined));
       store.set({ focus: f.focusKey });
     }
-    requestAnimationFrame(loop);
   };
-  requestAnimationFrame(loop);
+  if (!recording) requestAnimationFrame(loop);
+  else {
+    engine.fixedDpr = 1;
+    resize();
+    let clock = 0;
+    Object.assign((window as unknown as { __atlas: object }).__atlas, {
+      /** vertical field of view in degrees (portrait footage wants a wider lens) */
+      fov(deg: number) {
+        engine.camera.fov = deg;
+        resize();
+      },
+      /** move the image centre by (x, y) CSS px */
+      shift(x: number, y: number) {
+        recShift = { x, y };
+      },
+      /** render exactly one frame, advancing everything by dt seconds */
+      step(dt: number) {
+        clock += dt * 1000;
+        tick(clock, dt);
+      },
+      /** what the recorder may show: 'clean' (no interface), 'labels', 'cut', 'full' */
+      ui(mode: 'clean' | 'labels' | 'cut' | 'full') {
+        document.body.dataset.rec = mode;
+      },
+    });
+  }
 
   // a console note for the curious
   console.log(`%cOrbital Atlas%c  ${tk('app.tagline')}\nSource: https://github.com/nebulausername/orbital-atlas`, 'font: 20px Georgia, serif; color: #ff5a36', 'color: #9a9284');

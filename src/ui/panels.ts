@@ -315,7 +315,7 @@ export class BodyIndex {
       const def = BODY[key];
       if (def.kind === 'planet' || def.kind === 'dwarf' || def.kind === 'comet' || def.kind === 'spacecraft') {
         const d = dist(key);
-        n.textContent = d === undefined ? '' : distanceShort(d);
+        n.textContent = d === undefined || Number.isNaN(d) ? '—' : distanceShort(d);
       }
     }
   }

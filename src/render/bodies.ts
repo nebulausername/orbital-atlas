@@ -402,7 +402,10 @@ export class BodiesLayer {
     const { pxPerRad } = f;
     for (const def of BODIES) {
       const pos = f.pos.get(def.key);
-      if (!pos) continue;
+      if (!pos) {
+        this.states.delete(def.key);
+        continue;
+      }
       const dist = Math.max(1e-12, Math.hypot(pos[0] - f.cam[0], pos[1] - f.cam[1], pos[2] - f.cam[2]));
       const rTrue = kmToAu(def.radiusKm);
       const minR = (MIN_PX[def.kind] / pxPerRad) * dist;

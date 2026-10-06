@@ -180,6 +180,7 @@ export class Engine {
     for (const b of BODIES) {
       const p = this.sim.pos.get(b.key);
       if (p) f.pos.set(b.key, eclToScene(p));
+      else f.pos.delete(b.key);
     }
     const sun = f.pos.get('sun')!;
     this.updateMinZoom();

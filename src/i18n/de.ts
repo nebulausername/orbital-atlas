@@ -242,7 +242,7 @@ export const de: Record<Key, string> = {
   'arm.scutum': 'Scutum-Centaurus-Arm',
   'arm.sagittarius': 'Sagittarius-Carina-Arm',
   'arm.norma': 'Norma-Arm',
-  'region.youarehere': 'Sie sind hier',
+  'region.youarehere': 'Du bist hier',
   'region.gc': 'Galaktisches Zentrum · Sgr A*',
   'region.orion': 'Orion-Sporn',
   'region.heliopause': 'Heliopause · Voyager 1 durchquerte sie bei 121 AE (2012)',

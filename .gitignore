@@ -10,3 +10,7 @@ trailer/out/
 trailer/node_modules/
 trailer/public/aufnahmen/
 .tmp-vitest/
+trailer/public/aufnahmen-vorschau/
+trailer/public/shots/
+trailer/src/data/
+trailer/public/score.wav

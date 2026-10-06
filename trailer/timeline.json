@@ -1,0 +1,32 @@
+{
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "duration": 27.0,
+  "shots": [
+    { "name": "s1-zoomout", "from": 0.0, "dur": 7.0 },
+    { "name": "s2-galaxy", "from": 7.0, "dur": 1.6 },
+    { "name": "s3-saturn", "from": 8.6, "dur": 4.0 },
+    { "name": "s4-cut", "from": 12.6, "dur": 3.6 },
+    { "name": "s5-rewind", "from": 16.2, "dur": 5.0 },
+    { "name": "s6-orrery", "from": 21.2, "dur": 2.4 },
+    { "name": "s7-end", "from": 23.6, "dur": 3.4 }
+  ],
+  "beats": {
+    "hook1": 0.25,
+    "hook2": 1.55,
+    "zoomStart": 2.6,
+    "galaxyHit": 7.0,
+    "saturnDive": 8.6,
+    "arpStart": 9.3,
+    "cutOpen": 12.95,
+    "layerTicks": [13.45, 13.62, 13.79, 13.96, 14.13],
+    "rewindStart": 16.2,
+    "rewindEnd": 19.8,
+    "halley": 19.85,
+    "accuracy": 21.2,
+    "endHit": 23.6,
+    "urlBell": 25.1,
+    "fadeOut": 26.2
+  }
+}

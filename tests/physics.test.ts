@@ -142,3 +142,21 @@ describe('the colophon tells the truth', () => {
     expect(err.moon).toBeLessThan(250);
   }, 120_000);
 });
+
+describe('spacecraft before the epoch', () => {
+  it('follow their recorded paths: Voyager 2 is at Uranus on 24 January 1986', async () => {
+    const sim = new Simulation();
+    await sim.seek(jdFromUnixMs(Date.UTC(1986, 0, 24, 18)));
+    const v = sim.pos.get('voyager2')!;
+    const u = sim.pos.get('uranus')!;
+    // 10-day samples: the flyby itself is not resolved, but the craft must be in the system
+    expect(Math.hypot(v[0] - u[0], v[1] - u[1], v[2] - u[2])).toBeLessThan(0.05);
+  }, 60_000);
+  it('do not exist before launch', async () => {
+    const sim = new Simulation();
+    await sim.seek(jdFromUnixMs(Date.UTC(1977, 0, 1)));
+    expect(sim.pos.has('voyager1')).toBe(false);
+    expect(sim.pos.has('newhorizons')).toBe(false);
+    expect(Number.isNaN(sim.sunDistance('voyager2'))).toBe(true);
+  }, 60_000);
+});
