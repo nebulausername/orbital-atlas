@@ -643,6 +643,8 @@ export async function start() {
       /** move the image centre by (x, y) CSS px */
       shift(x: number, y: number) {
         recShift = { x, y };
+        engine.shiftTarget = recShift;
+        engine.snapShift();
       },
       /** render exactly one frame, advancing everything by dt seconds */
       step(dt: number) {

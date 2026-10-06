@@ -278,7 +278,7 @@ export const de: Record<Key, string> = {
   'help.keys.n': 'N — jetzt',
   'help.keys.s': 'S — maßstabsgetreu / illustrativ',
   'help.keys.i': 'I — aufschneiden',
-  'help.keys.o': 'O · T · L — Bahnen · Spuren · Beschriftung',
+  'help.keys.o': 'O · T · L · A — Bahnen · Spuren · Beschriftung · Asteroiden',
   'help.keys.digits': '0–9 — Sonne und Planeten',
   'help.keys.esc': 'Esc — zurück',
 

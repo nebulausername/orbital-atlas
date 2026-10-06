@@ -16,6 +16,12 @@ const ease = Easing.bezier(0.22, 0.61, 0.2, 1);
 
 /* ------------------------------------------------------------ primitives */
 
+/** Shows children between two absolute times. Unlike <Sequence>, frame numbers stay absolute. */
+const Show: React.FC<{ from: number; to?: number; children: React.ReactNode }> = ({ from, to = Infinity, children }) => {
+  const frame = useCurrentFrame();
+  return frame >= f(from) && frame < f(to) ? <>{children}</> : null;
+};
+
 /** Words rise out of a blur, one after another (like the app's frontispiece). */
 const Rise: React.FC<{ text: string; at: number; size: number; italic?: boolean; color?: string; stagger?: number; out?: number; style?: React.CSSProperties }> = ({ text, at, size, italic, color = C.paper, stagger = 0.07, out, style }) => {
   const frame = useCurrentFrame();
@@ -39,8 +45,8 @@ const Rise: React.FC<{ text: string; at: number; size: number; italic?: boolean;
 /** Mono caption with letter spacing, typed in. */
 const Caps: React.FC<{ text: string; at: number; size?: number; color?: string; out?: number; style?: React.CSSProperties }> = ({ text, at, size = 26, color = C.paper2, out, style }) => {
   const frame = useCurrentFrame();
-  const n = Math.round(interpolate(frame, [f(at), f(at) + text.length * 0.9], [0, text.length], clamp));
-  const o = out === undefined ? 1 : interpolate(frame, [f(out) - 6, f(out)], [1, 0], clamp);
+  const n = Math.round(interpolate(frame, [f(at), f(at) + text.length * 0.42], [0, text.length], clamp));
+  const o = (out === undefined ? 1 : interpolate(frame, [f(out) - 6, f(out)], [1, 0], clamp)) * (frame >= f(at) ? 1 : 0);
   return (
     <div style={{ fontFamily: MONO, fontSize: size, letterSpacing: '0.16em', textTransform: 'uppercase', color, opacity: o, whiteSpace: 'nowrap', ...style }}>
       {text.slice(0, n)}
@@ -111,14 +117,16 @@ const Frame: React.FC<{ lang: Lang }> = ({ lang }) => {
 
 /* ------------------------------------------------------------ footage */
 
-const Shot: React.FC<{ name: string; from: number; dur: number; punch?: boolean }> = ({ name, from, dur, punch = true }) => {
+const LABELLED = ['s2-galaxy', 's5-rewind', 's6-orrery'];
+
+const Shot: React.FC<{ name: string; from: number; dur: number; punch?: boolean; lang: Lang }> = ({ name, from, dur, punch = true, lang }) => {
   const frame = useCurrentFrame();
   const local = frame - f(from);
   const p = punch ? interpolate(local, [0, 8], [0, 1], { ...clamp, easing: ease }) : 1;
   return (
     <Sequence from={f(from)} durationInFrames={f(dur)} layout="none">
       <AbsoluteFill style={{ transform: `scale(${1.07 - 0.07 * p})`, filter: `blur(${(1 - p) * 9}px)` }}>
-        <OffthreadVideo src={staticFile(`shots/${name}.mp4`)} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <OffthreadVideo src={staticFile(`shots/${name}${lang === 'de' && LABELLED.includes(name) ? '-de' : ''}.mp4`)} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </AbsoluteFill>
     </Sequence>
   );
@@ -204,7 +212,7 @@ const Layers: React.FC<{ lang: Lang }> = ({ lang }) => {
   const frame = useCurrentFrame();
   const T = TEXT[lang];
   return (
-    <div style={{ position: 'absolute', left: 90, right: 90, top: 1260 }}>
+    <div style={{ position: 'absolute', left: 90, right: 90, top: T.cut.length > 22 ? 1300 : 1260 }}>
       {T.layers.map((name, k) => {
         const at = B.layerTicks[k];
         const p = interpolate(frame, [f(at), f(at) + 10], [0, 1], { ...clamp, easing: ease });
@@ -260,7 +268,7 @@ const EndCard: React.FC<{ lang: Lang }> = ({ lang }) => {
   const o = interpolate(frame, [f(B.endHit), f(B.endHit) + 10], [0, 1], clamp);
   return (
     <AbsoluteFill style={{ opacity: o }}>
-      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(4,7,13,0.35), rgba(4,7,13,0.88) 70%)' }} />
+      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 34%, rgba(4,7,13,0.72), rgba(4,7,13,0.93) 68%)' }} />
       <Orrery at={B.endHit} />
       <div style={{ position: 'absolute', left: 0, right: 0, top: 1130, textAlign: 'center' }}>
         <Rise text={T.title} at={B.endHit + 0.15} size={176} stagger={0.09} style={{ justifyContent: 'center' }} />
@@ -306,19 +314,19 @@ export const Trailer: React.FC<{ lang: Lang }> = ({ lang }) => {
   return (
     <AbsoluteFill style={{ background: C.ink }}>
       {shots.map((x, i) => (
-        <Shot key={x.name} name={x.name} from={x.from} dur={x.dur} punch={i !== 1} />
+        <Shot key={x.name} name={x.name} from={x.from} dur={x.dur} punch={i !== 1} lang={lang} />
       ))}
       {/* readability: soft ink at the top and bottom of the picture */}
       <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(4,7,13,0.75) 0%, rgba(4,7,13,0) 16%, rgba(4,7,13,0) 55%, rgba(4,7,13,0.82) 100%)' }} />
       <AbsoluteFill style={{ boxShadow: 'inset 0 0 220px rgba(0,0,0,0.65)' }} />
 
       {/* hook */}
-      <Sequence from={0} durationInFrames={f(B.zoomStart + 0.1)} layout="none">
+      <Show from={0} to={B.zoomStart + 0.1}>
         <div style={{ position: 'absolute', left: 90, right: 90, top: 1260 }}>
           <Rise text={T.hook1} at={B.hook1} size={104} out={B.zoomStart} />
           <Rise text={T.hook2} at={B.hook2} size={104} italic color={C.red} out={B.zoomStart} style={{ marginTop: 12 }} />
         </div>
-      </Sequence>
+      </Show>
       <Burst at={B.hook2} color={C.red} />
 
       <PowersOfTen lang={lang} />
@@ -326,35 +334,35 @@ export const Trailer: React.FC<{ lang: Lang }> = ({ lang }) => {
       {/* galaxy */}
       <Flash at={B.galaxyHit} />
       <Burst at={B.galaxyHit} />
-      <Sequence from={f(B.galaxyHit)} durationInFrames={f(s['s2-galaxy'].dur)} layout="none">
+      <Show from={B.galaxyHit} to={B.galaxyHit + s['s2-galaxy'].dur}>
         <div style={{ position: 'absolute', left: 90, right: 90, top: 1330 }}>
           <Caps text={T.plateGalaxy} at={B.galaxyHit + 0.15} color={C.red} size={24} />
           <Rise text={T.here} at={B.galaxyHit + 0.25} size={150} out={B.saturnDive} style={{ marginTop: 18 }} />
         </div>
-      </Sequence>
+      </Show>
 
       {/* Saturn */}
-      <Sequence from={f(B.saturnDive)} durationInFrames={f(s['s3-saturn'].dur)} layout="none">
+      <Show from={B.saturnDive} to={B.saturnDive + s['s3-saturn'].dur}>
         <div style={{ position: 'absolute', left: 90, right: 90, top: 1280 }}>
           <Rise text={T.newton1} at={B.saturnDive + 0.4} size={92} color={C.paper2} out={12.5} />
           <Rise text={T.newton2} at={B.saturnDive + 0.75} size={124} italic color={C.paper} out={12.5} />
           <Rule at={B.saturnDive + 1.3} width={360} style={{ marginTop: 18 }} />
           <Caps text={T.newton3} at={B.saturnDive + 1.8} size={26} color={C.paper} out={12.5} style={{ marginTop: 26 }} />
         </div>
-      </Sequence>
+      </Show>
 
       {/* cutaway */}
       <Burst at={B.cutOpen} color={C.red} y={700} />
-      <Sequence from={f(12.6)} durationInFrames={f(s['s4-cut'].dur)} layout="none">
-        <div style={{ position: 'absolute', left: 90, right: 90, top: 1120 }}>
-          <Rise text={T.cut} at={12.7} size={92} out={B.rewindStart} />
+      <Show from={12.6} to={12.6 + s['s4-cut'].dur}>
+        <div style={{ position: 'absolute', left: 90, right: 90, top: 1130 }}>
+          <Rise text={T.cut} at={12.7} size={T.cut.length > 22 ? 74 : 92} out={B.rewindStart} />
         </div>
         <Layers lang={lang} />
         <Caps text={T.cutCaption} at={14.4} size={20} color={C.paper3} out={B.rewindStart} style={{ position: 'absolute', left: 90, top: 1610 }} />
-      </Sequence>
+      </Show>
 
       {/* rewind */}
-      <Sequence from={f(B.rewindStart)} durationInFrames={f(s['s5-rewind'].dur)} layout="none">
+      <Show from={B.rewindStart} to={B.rewindStart + s['s5-rewind'].dur}>
         <div style={{ position: 'absolute', left: 90, right: 90, top: 1110 }}>
           <Rise text={T.rewind} at={B.rewindStart + 0.1} size={84} out={B.halley} />
         </div>
@@ -363,22 +371,22 @@ export const Trailer: React.FC<{ lang: Lang }> = ({ lang }) => {
           <Rise text={T.halley} at={B.halley + 0.1} size={130} out={B.accuracy} />
           <Caps text={T.halleyWhen} at={B.halley + 0.4} size={30} color={C.red} out={B.accuracy} style={{ marginTop: 14 }} />
         </div>
-      </Sequence>
+      </Show>
       <Flash at={B.halley} strength={0.35} />
 
       {/* accuracy */}
-      <Sequence from={f(B.accuracy)} durationInFrames={f(s['s6-orrery'].dur)} layout="none">
+      <Show from={B.accuracy} to={B.accuracy + s['s6-orrery'].dur}>
         <div style={{ position: 'absolute', left: 90, right: 90, top: 1230 }}>
           <Rise text={T.accuracyBig} at={B.accuracy + 0.15} size={240} out={B.endHit} />
           <Caps text={T.accuracy} at={B.accuracy + 0.5} size={24} color={C.paper} out={B.endHit} style={{ marginTop: 8, whiteSpace: 'normal', lineHeight: 1.5 }} />
         </div>
-      </Sequence>
+      </Show>
 
       {/* end */}
       <Flash at={B.endHit} strength={0.6} />
-      <Sequence from={f(B.endHit)} layout="none">
+      <Show from={B.endHit}>
         <EndCard lang={lang} />
-      </Sequence>
+      </Show>
 
       <Frame lang={lang} />
       <Grain />

@@ -59,6 +59,10 @@ export class Engine {
   /** desired / current shift of the image centre in CSS px (panels on the side) */
   shiftTarget = { x: 0, y: 0 };
   private shift = { x: 0, y: 0 };
+  /** jump to the target shift without easing (recorder) */
+  snapShift() {
+    this.shift = { ...this.shiftTarget };
+  }
 
   constructor(
     readonly canvas: HTMLCanvasElement,

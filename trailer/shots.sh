@@ -19,3 +19,13 @@ for dir in "$SRC"/*/; do
   echo "✓ $name $(ffprobe -v error -show_entries format=duration -of csv=p=0 "public/shots/$name.mp4") s"
 done
 cp "$SRC"/s1-zoomout.json "$SRC"/s5-rewind.json src/data/
+if [[ -d public/aufnahmen-de && "$STEP" == 1 ]]; then
+  for name in s2-galaxy s5-rewind s6-orrery; do
+    [[ -d "public/aufnahmen-de/$name" ]] || continue
+    ffmpeg -v error -y -pattern_type glob -framerate 30 -i "public/aufnahmen-de/$name/*.jpg" \
+      -vf "scale=1080:1920:flags=lanczos" -c:v libx264 -preset slow -crf 13 \
+      -pix_fmt yuv420p -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
+      -movflags +faststart "public/shots/$name-de.mp4"
+    echo "✓ $name-de"
+  done
+fi

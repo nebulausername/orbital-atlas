@@ -8,7 +8,7 @@ mkdir -p out
 for lang in ${1:-en de}; do
   id="Trailer-${lang^^}"
   raw="out/raw-$lang.mp4"
-  npx remotion render src/index.ts "$id" "$raw" --codec=h264 --crf=14 --pixel-format=yuv420p --color-space=bt709 --audio-codec=aac --audio-bitrate=320k --log=error
+  npx remotion render src/index.ts "$id" "$raw" --codec=h264 --crf=14 --pixel-format=yuv420p --color-space=bt709 --audio-codec=aac --audio-bitrate=320k --concurrency=3 --timeout=180000 --log=error
   # two-pass loudness normalisation
   stats=$(ffmpeg -hide_banner -nostats -i "$raw" -af loudnorm=I=-14:TP=-1:LRA=11:print_format=json -f null - 2>&1 | sed -n '/^{/,/^}/p')
   mi=$(echo "$stats" | sed -n 's/.*"input_i" : "\(.*\)".*/\1/p')

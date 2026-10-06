@@ -14,7 +14,7 @@ if (typeof document !== 'undefined') {
   Promise.all(
     FONTS.map(([family, file, style]) => {
       const f = new FontFace(family, `url(${staticFile(file)})`, { style });
-      return f.load().then((loaded) => document.fonts.add(loaded));
+      return f.load().then((loaded) => (document.fonts as unknown as { add: (f: FontFace) => void }).add(loaded));
     }),
   ).then(() => continueRender(handle));
 }

@@ -290,7 +290,7 @@ export const en = {
   'help.keys.n': 'N — now',
   'help.keys.s': 'S — true scale / illustrative',
   'help.keys.i': 'I — cut open',
-  'help.keys.o': 'O · T · L — orbits · trails · labels',
+  'help.keys.o': 'O · T · L · A — orbits · trails · labels · asteroids',
   'help.keys.digits': '0–9 — Sun and planets',
   'help.keys.esc': 'Esc — back out',
 

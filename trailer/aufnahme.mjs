@@ -6,12 +6,13 @@ import { mkdir, writeFile, rm } from 'node:fs/promises';
 
 const args = process.argv.slice(2);
 const preview = args.includes('--preview');
-const only = args.find((a) => a.startsWith('--only='))?.slice(7);
+const only = args.find((a) => a.startsWith('--only='))?.slice(7)?.split(',');
+const lang = args.find((a) => a.startsWith('--lang='))?.slice(7) ?? 'en';
 const base = args.find((a) => a.startsWith('http')) ?? 'http://127.0.0.1:5190/orbital-atlas/';
 const FPS = 30;
 const W = preview ? 540 : 1080;
 const H = preview ? 960 : 1920;
-const OUT = new URL(`./public/aufnahmen${preview ? '-vorschau' : ''}/`, import.meta.url).pathname;
+const OUT = new URL(`./public/aufnahmen${preview ? '-vorschau' : ''}${lang === 'de' ? '-de' : ''}/`, import.meta.url).pathname;
 
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 const easeOut = (t) => 1 - (1 - t) ** 3;
@@ -30,7 +31,7 @@ const SHOTS = [
       // hold on the planet, then a powers-of-ten pull-back to the Galaxy
       const z = seg(t, 2.6, 7.0);
       const k = z < 0.5 ? 2 * z * z : 1 - (-2 * z + 2) ** 2 / 2;
-      return { key: 'earth', logD: lerp(-3.55, 9.85, k) - 0.07 * seg(t, 0, 2.6), yaw: c0.yaw + 0.08 * t + 1.2 * k, pitch: lerp(c0.pitch, 0.9, k) };
+      return { key: 'earth', logD: lerp(-3.68, 9.85, k) - 0.05 * seg(t, 0, 2.6), yaw: c0.yaw + 0.08 * t + 1.2 * k, pitch: lerp(c0.pitch, 0.9, k) };
     },
     days: 0.0008,
   },
@@ -57,7 +58,7 @@ const SHOTS = [
     dur: 3.6,
     ui: 'clean',
     setup: { focus: 'earth', cutAt: 0.35, shift: [0, 300] },
-    cam: (t, c0) => ({ key: 'earth', logD: -3.6 + 0.03 * Math.sin(t), yaw: c0.yaw + 0.05 * t, pitch: c0.pitch }),
+    cam: (t, c0) => ({ key: 'earth', logD: -3.7 + 0.025 * Math.sin(t), yaw: c0.yaw + 0.05 * t, pitch: c0.pitch }),
     days: 0.0005,
   },
   {
@@ -94,27 +95,35 @@ const SHOTS = [
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
 page.on('pageerror', (e) => console.log('pageerror', e.message));
-await page.goto(`${base}?record=1&lang=en`);
+await page.goto(`${base}?record=1&lang=${lang}`);
 await page.waitForSelector('.intro .enter.ready', { timeout: 180000 });
 await page.evaluate(() => {
   window.__atlas.finishIntro();
   window.__atlas.store.set({ paused: true, sound: false });
   window.__atlas.fov(58);
+  // 2k maps are plenty at 1080 px wide and keep memory low during long recordings
+  window.__atlas.engine.bodies.hiResAllowed = false;
 });
 await page.evaluate(() => window.__atlas.step(0.5));
 
 for (const shot of SHOTS) {
-  if (only && !shot.name.includes(only)) continue;
+  // shots are recorded in order because some continue from the previous one (s2 ← s1):
+  // a predecessor that is not requested runs "dry" — clock and camera only, no frames
+  const wanted = !only || only.some((o) => shot.name.includes(o));
+  const dry = !wanted && only.includes('s2') && shot.name.startsWith('s1');
+  if (!wanted && !dry) continue;
   const dir = `${OUT}${shot.name}/`;
-  await rm(dir, { recursive: true, force: true });
-  await mkdir(dir, { recursive: true });
+  if (!dry) {
+    await rm(dir, { recursive: true, force: true });
+    await mkdir(dir, { recursive: true });
+  }
   // --- setup ---
   await page.evaluate(async (s) => {
     const a = window.__atlas;
     a.ui(s.ui);
     a.select(null);
     a.store.set({ cutaway: null, paused: true });
-    a.shift(...(s.setup?.shift ?? [0, 0]));
+    a.shift(...(s.setup?.shift ?? [0, 0]).map((v) => v * (innerHeight / 960)));
     if (s.setup?.date === 'now') await a.seekJd(Date.now() / 86400000 + 2440587.5 + 69.184 / 86400);
     if (s.setup?.focus) a.jump(s.setup.focus);
     if (s.setup?.sunView) a.jump('sun', ...s.setup.sunView);
@@ -138,23 +147,34 @@ for (const shot of SHOTS) {
       const kPrev = ease(seg(t - 1 / FPS, a, b));
       days = (jdTo - jdFrom) * (k - kPrev) + (t > b ? 0.08 : 0);
     }
+    const render = !dry || i === n - 1;
     const m = await page.evaluate(
-      ({ cam, days, cutNow }) => {
+      ({ cam, days, cutNow, render }) => {
         const a = window.__atlas;
         if (days) a.advanceDays(days);
         if (cutNow) a.store.set({ cutaway: 'earth' });
         a.jump(cam.key, cam.logD, cam.yaw, cam.pitch);
-        a.step(1 / 30);
+        if (render) a.step(1 / 30);
         return { jd: a.sim.jd, logD: a.engine.frame.logD };
       },
-      { cam, days, cutNow: shot.setup?.cutAt !== undefined && Math.abs(t - shot.setup.cutAt) < 0.5 / FPS },
+      { cam, days, cutNow: shot.setup?.cutAt !== undefined && Math.abs(t - shot.setup.cutAt) < 0.5 / FPS, render },
     );
+    if (dry) continue;
     meta.push({ i, t: Number(t.toFixed(4)), ...m });
     if (i % stepEvery === 0) {
-      await page.screenshot({ path: `${dir}${String(i).padStart(4, '0')}.jpg`, type: 'jpeg', quality: preview ? 80 : 93, timeout: 240000 });
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await page.screenshot({ path: `${dir}${String(i).padStart(4, '0')}.jpg`, type: 'jpeg', quality: preview ? 80 : 93, timeout: 600000 });
+          break;
+        } catch (e) {
+          if (attempt >= 2) throw e;
+          console.log('screenshot retry', shot.name, i);
+        }
+      }
     }
     if (i % 30 === 0) console.log(shot.name, `${i}/${n}`);
   }
+  if (dry) continue;
   await writeFile(`${OUT}${shot.name}.json`, JSON.stringify(meta));
   console.log('✓', shot.name);
 }
